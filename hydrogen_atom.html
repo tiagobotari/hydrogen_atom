@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hydrogen Atom – Quantum Energy Levels</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #000010;
+  color: #c8d8ff;
+  font-family: 'Courier New', monospace;
+  overflow: hidden;
+  height: 100vh;
+  display: flex;
+}
+
+/* ── SIDEBAR ── */
+#sidebar {
+  width: 290px;
+  min-width: 290px;
+  background: rgba(0, 4, 22, 0.92);
+  border-right: 1px solid rgba(60, 100, 255, 0.25);
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  gap: 14px;
+  overflow-y: auto;
+  z-index: 10;
+}
+
+#sidebar h1 {
+  font-size: 11px;
+  font-weight: normal;
+  color: #3a6aff;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  text-align: center;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(60, 100, 255, 0.2);
+}
+
+.section-label {
+  font-size: 9px;
+  color: #2a4a99;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 4px;
+}
+
+/* Energy diagram */
+#energy-wrap {
+  flex: 1;
+  min-height: 160px;
+  position: relative;
+}
+
+#energy-canvas {
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+/* State info */
+#state-card {
+  background: rgba(6, 14, 55, 0.8);
+  border: 1px solid rgba(60, 100, 255, 0.2);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+#orbital-badge {
+  font-size: 28px;
+  font-weight: bold;
+  color: #a0c4ff;
+  text-align: center;
+  line-height: 1;
+  margin-bottom: 4px;
+  letter-spacing: 2px;
+}
+
+#energy-display {
+  font-size: 11px;
+  color: #4a6aaa;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.qn-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  margin-bottom: 5px;
+}
+
+.qn-label { color: #4a5a88; }
+.qn-val   { color: #60aaff; font-weight: bold; }
+
+/* Sliders */
+.ctrl-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ctrl-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ctrl-label {
+  font-size: 10px;
+  color: #3a5080;
+  display: flex;
+  justify-content: space-between;
+}
+
+.ctrl-label span { color: #50aaff; }
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 3px;
+  background: rgba(40,80,200,0.3);
+  border-radius: 2px;
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 13px;
+  height: 13px;
+  background: #3a7aff;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 6px rgba(58,122,255,0.6);
+}
+
+/* Quick-select buttons */
+.quick-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+
+.qbtn {
+  background: rgba(20, 40, 120, 0.4);
+  border: 1px solid rgba(60, 100, 200, 0.25);
+  color: #6080c0;
+  font-family: inherit;
+  font-size: 10px;
+  padding: 4px 0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+
+.qbtn:hover { background: rgba(40,80,200,0.4); color: #a0c0ff; }
+.qbtn.active {
+  background: rgba(60,120,255,0.3);
+  border-color: rgba(100,160,255,0.5);
+  color: #c0d8ff;
+}
+
+/* Keyboard hint */
+#kbd-hint {
+  font-size: 9px;
+  color: #202e5a;
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* ── MAIN VIEW ── */
+#main {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+#canvas-wrap {
+  width: 100%;
+  height: 100%;
+}
+
+/* Overlays */
+#loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,12,0.5);
+  z-index: 20;
+  pointer-events: none;
+}
+
+#loading-text {
+  font-size: 13px;
+  color: #4070cc;
+  letter-spacing: 3px;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+
+#photon-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+  z-index: 15;
+}
+
+#photon-lambda {
+  font-size: 22px;
+  font-weight: bold;
+  text-shadow: 0 0 12px currentColor;
+}
+
+#photon-info {
+  font-size: 11px;
+  color: #6080a0;
+  margin-top: 3px;
+}
+
+#controls-hint {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  background: rgba(0, 5, 24, 0.7);
+  border: 1px solid rgba(40, 70, 180, 0.2);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 10px;
+  color: #304070;
+  line-height: 1.8;
+  pointer-events: none;
+}
+
+#state-hint {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  font-size: 11px;
+  color: #2a4070;
+  pointer-events: none;
+  letter-spacing: 1px;
+}
+</style>
+</head>
+<body>
+
+<!-- ════ SIDEBAR ════ -->
+<aside id="sidebar">
+  <h1>Hydrogen Atom</h1>
+
+  <div>
+    <div class="section-label">Energy Levels  (click to jump)</div>
+    <div id="energy-wrap">
+      <canvas id="energy-canvas"></canvas>
+    </div>
+  </div>
+
+  <div id="state-card">
+    <div id="orbital-badge">1s</div>
+    <div id="energy-display">E = −13.6000 eV</div>
+    <div class="qn-row"><span class="qn-label">n  principal</span><span class="qn-val" id="n-val">1</span></div>
+    <div class="qn-row"><span class="qn-label">ℓ  angular</span><span class="qn-val" id="l-val">0</span></div>
+    <div class="qn-row"><span class="qn-label">m  magnetic</span><span class="qn-val" id="m-val">0</span></div>
+  </div>
+
+  <div class="ctrl-block">
+    <div class="section-label">Quantum Numbers</div>
+
+    <div class="ctrl-row">
+      <div class="ctrl-label">n (principal) <span id="n-label">1</span></div>
+      <input type="range" id="n-slider" min="1" max="6" value="1">
+    </div>
+
+    <div class="ctrl-row">
+      <div class="ctrl-label">ℓ (angular) <span id="l-label">0</span></div>
+      <input type="range" id="l-slider" min="0" max="0" value="0">
+    </div>
+
+    <div class="ctrl-row">
+      <div class="ctrl-label">m (magnetic) <span id="m-label">0</span></div>
+      <input type="range" id="m-slider" min="0" max="0" value="0">
+    </div>
+  </div>
+
+  <div>
+    <div class="section-label" style="margin-bottom:6px">Quick Select</div>
+    <div class="quick-grid" id="quick-grid">
+      <button class="qbtn active" data-state="1,0,0">1s</button>
+      <button class="qbtn" data-state="2,0,0">2s</button>
+      <button class="qbtn" data-state="2,1,0">2p₀</button>
+      <button class="qbtn" data-state="2,1,1">2p₁</button>
+      <button class="qbtn" data-state="3,0,0">3s</button>
+      <button class="qbtn" data-state="3,1,0">3p₀</button>
+      <button class="qbtn" data-state="3,2,0">3d₀</button>
+      <button class="qbtn" data-state="3,2,2">3d₂</button>
+      <button class="qbtn" data-state="4,0,0">4s</button>
+      <button class="qbtn" data-state="4,3,0">4f₀</button>
+      <button class="qbtn" data-state="5,4,0">5g₀</button>
+      <button class="qbtn" data-state="6,5,0">6h₀</button>
+    </div>
+  </div>
+
+  <div id="kbd-hint">
+    ↑↓ change n &nbsp;·&nbsp; ←→ change ℓ<br>
+    Shift+←→ change m
+  </div>
+</aside>
+
+<!-- ════ MAIN 3D VIEW ════ -->
+<main id="main">
+  <div id="canvas-wrap"></div>
+
+  <div id="loading-overlay">
+    <div id="loading-text">COMPUTING ORBITAL…</div>
+  </div>
+
+  <div id="photon-overlay">
+    <div id="photon-lambda"></div>
+    <div id="photon-info"></div>
+  </div>
+
+  <div id="controls-hint">
+    Drag · Rotate &nbsp;·&nbsp; Scroll · Zoom<br>
+    Right-drag · Pan
+  </div>
+
+  <div id="state-hint" id="state-hint"></div>
+</main>
+
+<!-- ════ IMPORTMAP ════ -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ═══════════════════════════════════════════════════════════════
+// 1.  QUANTUM MECHANICS MATH
+// ═══════════════════════════════════════════════════════════════
+
+function factorial(n) {
+  if (n <= 1) return 1;
+  let f = 1;
+  for (let i = 2; i <= n; i++) f *= i;
+  return f;
+}
+
+/** Associated Laguerre polynomial  L_p^alpha(x) via recurrence */
+function assocLaguerre(p, alpha, x) {
+  if (p === 0) return 1;
+  if (p === 1) return 1 + alpha - x;
+  let L0 = 1, L1 = 1 + alpha - x;
+  for (let k = 2; k <= p; k++) {
+    const L2 = ((2*k - 1 + alpha - x) * L1 - (k - 1 + alpha) * L0) / k;
+    L0 = L1; L1 = L2;
+  }
+  return L1;
+}
+
+/** Associated Legendre polynomial  P_l^m(x), m ≥ 0, via recurrence */
+function assocLegendre(l, m, x) {
+  let Pmm = 1;
+  const sq = Math.sqrt(Math.max(0, 1 - x*x));
+  for (let i = 1; i <= m; i++) Pmm *= -(2*i - 1) * sq;
+  if (l === m) return Pmm;
+  let P0 = Pmm, P1 = (2*m + 1) * x * Pmm;
+  if (l === m + 1) return P1;
+  for (let j = m + 2; j <= l; j++) {
+    const P2 = ((2*j - 1) * x * P1 - (j + m - 1) * P0) / (j - m);
+    P0 = P1; P1 = P2;
+  }
+  return P1;
+}
+
+/**
+ * Normalised radial wave function R_nl(r) with a₀ = 1.
+ * Uses the formula from Griffiths QM, Table 4.7.
+ */
+function radialWF(n, l, r) {
+  if (r < 1e-10) r = 1e-10;
+  const rho  = 2 * r / n;
+  const norm = Math.sqrt(
+    Math.pow(2 / n, 3) * factorial(n - l - 1) / (2 * n * factorial(n + l))
+  );
+  return norm * Math.exp(-r / n) * Math.pow(rho, l)
+         * assocLaguerre(n - l - 1, 2*l + 1, rho);
+}
+
+/**
+ * Real spherical harmonic  S_l^m(θ, φ)
+ * Convention: +m → cosine combination, −m → sine combination.
+ */
+function spherHarm(l, m, theta, phi) {
+  const am   = Math.abs(m);
+  const P    = assocLegendre(l, am, Math.cos(theta));
+  const norm = Math.sqrt((2*l + 1) / (4 * Math.PI)
+               * factorial(l - am) / factorial(l + am));
+  if (m > 0) return Math.SQRT2 * norm * P * Math.cos( m * phi);
+  if (m < 0) return Math.SQRT2 * norm * P * Math.sin(am * phi);
+  return norm * P;
+}
+
+/** |ψ_nlm(x,y,z)|² in Cartesian coordinates */
+function psi2(n, l, m, x, y, z) {
+  const r = Math.sqrt(x*x + y*y + z*z);
+  if (r < 1e-10) return 0;
+  const theta = Math.acos(Math.max(-1, Math.min(1, z / r)));
+  const phi   = Math.atan2(y, x);
+  const R = radialWF(n, l, r);
+  const Y = spherHarm(l, m, theta, phi);
+  return R * R * Y * Y;
+}
+
+/** Energy in eV for principal quantum number n */
+const energyEV = n => -13.6 / (n * n);
+
+const ORBITAL_LABELS = ['s', 'p', 'd', 'f', 'g', 'h'];
+function orbitalName(n, l) { return `${n}${ORBITAL_LABELS[l] ?? '?'}`; }
+
+// ═══════════════════════════════════════════════════════════════
+// 2.  SAMPLING UTILITIES
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Build a CDF of the radial probability distribution r²|R_nl(r)|²
+ * so we can sample r efficiently (importance sampling).
+ */
+function buildRadialCDF(n, l) {
+  const N    = 1200;
+  const rMax = Math.max(7 * n * n, 18);
+  const dr   = rMax / N;
+  const pdf  = new Float64Array(N);
+  let total  = 0;
+
+  for (let i = 0; i < N; i++) {
+    const r = (i + 0.5) * dr;
+    const R = radialWF(n, l, r);
+    pdf[i]  = r * r * R * R * dr;
+    total  += pdf[i];
+  }
+
+  const cdf = new Float64Array(N);
+  cdf[0] = pdf[0] / total;
+  for (let i = 1; i < N; i++) cdf[i] = cdf[i-1] + pdf[i] / total;
+
+  return { cdf, rMax, dr, N };
+}
+
+/** Inverse-CDF sample of r from the radial distribution */
+function sampleR({ cdf, dr }) {
+  const u = Math.random();
+  let lo = 0, hi = cdf.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (cdf[mid] < u) lo = mid + 1; else hi = mid;
+  }
+  return (lo + Math.random()) * dr;
+}
+
+/** Max of |Y_lm(θ,φ)|² over the sphere (coarse grid) */
+function maxY2(l, m) {
+  let mx = 0;
+  const N = 80;
+  for (let i = 0; i <= N; i++) {
+    const theta = Math.PI * i / N;
+    for (let j = 0; j <= N; j++) {
+      const phi = 2 * Math.PI * j / N;
+      const v   = spherHarm(l, m, theta, phi);
+      if (v * v > mx) mx = v * v;
+    }
+  }
+  return mx || 1e-10;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 3.  THREE.JS  SETUP
+// ═══════════════════════════════════════════════════════════════
+
+const container = document.getElementById('canvas-wrap');
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(container.clientWidth, container.clientHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+container.appendChild(renderer.domElement);
+
+const scene  = new THREE.Scene();
+scene.background = new THREE.Color(0x000008);
+
+const camera = new THREE.PerspectiveCamera(
+  55, container.clientWidth / container.clientHeight, 0.01, 50000
+);
+camera.position.set(0, 0, 28);
+
+const orbitCtrl = new OrbitControls(camera, renderer.domElement);
+orbitCtrl.enableDamping  = true;
+orbitCtrl.dampingFactor  = 0.06;
+orbitCtrl.minDistance    = 0.5;
+orbitCtrl.maxDistance    = 20000;
+
+// ── Star field ──────────────────────────────────────────────
+const starGeo = new THREE.BufferGeometry();
+const starPos = new Float32Array(4000 * 3);
+for (let i = 0; i < 4000; i++) {
+  starPos[i*3]   = (Math.random() - 0.5) * 4000;
+  starPos[i*3+1] = (Math.random() - 0.5) * 4000;
+  starPos[i*3+2] = (Math.random() - 0.5) * 4000;
+}
+starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({
+  color: 0xffffff, size: 0.6, transparent: true, opacity: 0.35
+})));
+
+// ── Nucleus ─────────────────────────────────────────────────
+const nucleusMesh = new THREE.Mesh(
+  new THREE.SphereGeometry(0.6, 32, 32),
+  new THREE.MeshBasicMaterial({ color: 0xffcc44 })
+);
+scene.add(nucleusMesh);
+
+// Nucleus halo (additive glow)
+const haloMesh = new THREE.Mesh(
+  new THREE.SphereGeometry(1.4, 32, 32),
+  new THREE.MeshBasicMaterial({
+    color: 0xff8800, transparent: true, opacity: 0.18,
+    blending: THREE.AdditiveBlending, depthWrite: false
+  })
+);
+scene.add(haloMesh);
+
+// ── Axes helper (faint) ─────────────────────────────────────
+const axesMat = (hex) => new THREE.LineBasicMaterial({ color: hex, transparent: true, opacity: 0.12 });
+function addAxis(dir, mat) {
+  const pts = [new THREE.Vector3(), dir];
+  scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat));
+}
+addAxis(new THREE.Vector3(200, 0, 0), axesMat(0xff2222));
+addAxis(new THREE.Vector3(0, 200, 0), axesMat(0x22ff22));
+addAxis(new THREE.Vector3(0, 0, 200), axesMat(0x2222ff));
+
+// ═══════════════════════════════════════════════════════════════
+// 4.  ORBITAL POINT CLOUD
+// ═══════════════════════════════════════════════════════════════
+
+const NUM_PTS = 14000;
+
+const LEVEL_COLORS = [
+  new THREE.Color(0.28, 0.58, 1.00),  // n=1  blue
+  new THREE.Color(0.00, 0.85, 1.00),  // n=2  cyan
+  new THREE.Color(0.20, 1.00, 0.55),  // n=3  green-cyan
+  new THREE.Color(0.85, 1.00, 0.10),  // n=4  yellow-green
+  new THREE.Color(1.00, 0.55, 0.08),  // n=5  orange
+  new THREE.Color(1.00, 0.20, 0.40),  // n=6  pink-red
+];
+
+let cloudOld  = null;   // fading out
+let cloudNew  = null;   // fading in
+let transT    = 1.0;    // 0→1 during transition
+const TRANS_DUR = 0.6;  // seconds
+
+function getColor(n) { return LEVEL_COLORS[Math.min(n - 1, 5)]; }
+
+function buildCloud(n, l, m) {
+  const cdfData = buildRadialCDF(n, l);
+  const mY2     = maxY2(l, m);
+  const base    = getColor(n);
+
+  const posArr = new Float32Array(NUM_PTS * 3);
+  const colArr = new Float32Array(NUM_PTS * 3);
+
+  let i = 0;
+  let guard = NUM_PTS * 120;
+
+  while (i < NUM_PTS && --guard > 0) {
+    const r     = sampleR(cdfData);
+    // Uniform on sphere
+    const cosT  = 2 * Math.random() - 1;
+    const sinT  = Math.sqrt(Math.max(0, 1 - cosT * cosT));
+    const phi   = 2 * Math.PI * Math.random();
+
+    // Angular rejection sampling
+    const Y  = spherHarm(l, m, Math.acos(cosT), phi);
+    const y2 = Y * Y;
+    if (Math.random() * mY2 > y2) continue;
+
+    const x = r * sinT * Math.cos(phi);
+    const y = r * sinT * Math.sin(phi);
+    const z = r * cosT;
+
+    posArr[i*3]   = x;
+    posArr[i*3+1] = y;
+    posArr[i*3+2] = z;
+
+    // Color: base tinted toward white for high angular density
+    const t = Math.pow(y2 / mY2, 0.35);
+    colArr[i*3]   = base.r * 0.5 + 0.5 * t;
+    colArr[i*3+1] = base.g * 0.5 + 0.5 * t;
+    colArr[i*3+2] = base.b * 0.5 + 0.5 * t;
+
+    i++;
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
+  geo.setAttribute('color',    new THREE.BufferAttribute(colArr, 3));
+
+  const mat = new THREE.PointsMaterial({
+    size:         0.35 * Math.max(1, n * 0.7),
+    vertexColors: true,
+    transparent:  true,
+    opacity:      0,
+    blending:     THREE.AdditiveBlending,
+    depthWrite:   false,
+    sizeAttenuation: true,
+  });
+
+  return new THREE.Points(geo, mat);
+}
+
+function animateCameraTo(n) {
+  const targetDist = Math.max(22, 3.2 * n * n);
+  // Tween camera outward/inward smoothly via lerp in the animation loop
+  camTargetDist = targetDist;
+}
+
+let camTargetDist = 28;
+
+// ═══════════════════════════════════════════════════════════════
+// 5.  STATE MANAGEMENT
+// ═══════════════════════════════════════════════════════════════
+
+let state = { n: 1, l: 0, m: 0 };
+
+function loadingVisible(v) {
+  document.getElementById('loading-overlay').style.display = v ? 'flex' : 'none';
+}
+
+function setState(n, l, m, skipPhoton = false) {
+  if (!skipPhoton) {
+    const dE = Math.abs(energyEV(n) - energyEV(state.n));
+    if (dE > 0.01) showPhoton(dE, energyEV(n) < energyEV(state.n));
+  }
+
+  state = { n, l, m };
+  updateUI();
+
+  loadingVisible(true);
+  setTimeout(() => {
+    // Begin transition: fade old cloud out, build new one
+    if (cloudNew) {
+      if (cloudOld) { scene.remove(cloudOld); cloudOld.geometry.dispose(); cloudOld.material.dispose(); }
+      cloudOld = cloudNew;
+      cloudOld.material.opacity = 0.8;
+    }
+
+    cloudNew = buildCloud(n, l, m);
+    cloudNew.material.opacity = 0;
+    scene.add(cloudNew);
+
+    transT = 0;
+    animateCameraTo(n);
+    loadingVisible(false);
+  }, 30);
+}
+
+function updateUI() {
+  const { n, l, m } = state;
+  const E = energyEV(n);
+  const name = orbitalName(n, l);
+  const mStr = m === 0 ? '' : (m > 0 ? `⁺${m}` : `${m}`);
+
+  document.getElementById('orbital-badge').textContent  = name + mStr;
+  document.getElementById('energy-display').textContent = `E = ${E.toFixed(4)} eV`;
+  document.getElementById('n-val').textContent = n;
+  document.getElementById('l-val').textContent = l;
+  document.getElementById('m-val').textContent = m;
+
+  document.getElementById('n-slider').value = n;
+  const lSlider = document.getElementById('l-slider');
+  lSlider.max = n - 1; lSlider.value = l;
+  const mSlider = document.getElementById('m-slider');
+  mSlider.min = -l; mSlider.max = l; mSlider.value = m;
+
+  document.getElementById('n-label').textContent = n;
+  document.getElementById('l-label').textContent = l;
+  document.getElementById('m-label').textContent = m;
+
+  // Quick-select buttons
+  const key = `${n},${l},${m}`;
+  document.querySelectorAll('.qbtn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.state === key);
+  });
+
+  drawEnergyDiagram();
+}
+
+// ── Photon display ──────────────────────────────────────────
+let photonTimer = null;
+
+function showPhoton(deltaE, isEmission) {
+  const lambda = 1240 / deltaE; // nm
+
+  let color, region;
+  if      (lambda < 10)  { color = '#ffffff'; region = 'X-ray'; }
+  else if (lambda < 100) { color = '#cc44ff'; region = 'EUV'; }
+  else if (lambda < 380) { color = '#7766ff'; region = 'UV'; }
+  else if (lambda < 450) { color = '#4466ff'; region = 'Violet'; }
+  else if (lambda < 495) { color = '#2288ff'; region = 'Blue'; }
+  else if (lambda < 570) { color = '#22ee44'; region = 'Green'; }
+  else if (lambda < 590) { color = '#ffff22'; region = 'Yellow'; }
+  else if (lambda < 620) { color = '#ffaa22'; region = 'Orange'; }
+  else if (lambda < 750) { color = '#ff4422'; region = 'Red'; }
+  else                   { color = '#aa2222'; region = 'Infrared'; }
+
+  const el  = document.getElementById('photon-overlay');
+  const lEl = document.getElementById('photon-lambda');
+  const iEl = document.getElementById('photon-info');
+
+  lEl.style.color   = color;
+  lEl.textContent   = `λ = ${lambda.toFixed(1)} nm`;
+  iEl.textContent   = `${region}  ·  ${isEmission ? 'Emission ↓' : 'Absorption ↑'}`;
+
+  el.style.opacity = '1';
+  if (photonTimer) clearTimeout(photonTimer);
+  photonTimer = setTimeout(() => { el.style.opacity = '0'; }, 2200);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 6.  ENERGY LEVEL DIAGRAM
+// ═══════════════════════════════════════════════════════════════
+
+const eCvs = document.getElementById('energy-canvas');
+const eCtx = eCvs.getContext('2d');
+
+function sizeEnergyCanvas() {
+  const wrap = document.getElementById('energy-wrap');
+  eCvs.width  = wrap.clientWidth;
+  eCvs.height = wrap.clientHeight;
+  drawEnergyDiagram();
+}
+
+function drawEnergyDiagram() {
+  const W = eCvs.width, H = eCvs.height;
+  eCtx.clearRect(0, 0, W, H);
+
+  const E_min = -13.6, E_max = 0;
+  const pad   = { t: 18, b: 22, l: 44, r: 8 };
+  const cH    = H - pad.t - pad.b;
+
+  const yFor  = E => pad.t + cH * (1 - (E - E_min) / (E_max - E_min));
+
+  // Axis
+  eCtx.strokeStyle = 'rgba(40,70,180,0.35)';
+  eCtx.lineWidth   = 1;
+  eCtx.beginPath();
+  eCtx.moveTo(pad.l, pad.t);
+  eCtx.lineTo(pad.l, H - pad.b);
+  eCtx.stroke();
+
+  // Continuum line
+  eCtx.setLineDash([3, 5]);
+  eCtx.strokeStyle = 'rgba(80,120,255,0.18)';
+  eCtx.beginPath();
+  eCtx.moveTo(pad.l, pad.t);
+  eCtx.lineTo(W - pad.r, pad.t);
+  eCtx.stroke();
+  eCtx.setLineDash([]);
+
+  // Labels
+  eCtx.fillStyle  = 'rgba(40,60,140,0.8)';
+  eCtx.font       = '8px Courier New';
+  eCtx.textAlign  = 'right';
+  eCtx.fillText('0 eV',   pad.l - 2, pad.t + 4);
+  eCtx.fillText('−13.6', pad.l - 2, H - pad.b + 4);
+
+  eCtx.fillStyle = 'rgba(60,90,180,0.5)';
+  eCtx.font      = '8px Courier New';
+  eCtx.textAlign = 'center';
+  eCtx.fillText('ionized', (pad.l + W - pad.r) / 2, pad.t - 4);
+
+  // Levels
+  const colors = ['#5090ff','#00d8ff','#30ff90','#c8ff10','#ff8030','#ff2050'];
+  for (let n = 1; n <= 6; n++) {
+    const E      = energyEV(n);
+    const y      = yFor(E);
+    const active = n === state.n;
+    const col    = colors[n - 1];
+
+    eCtx.strokeStyle = active ? col : col + '66';
+    eCtx.lineWidth   = active ? 2.5 : 1.2;
+    eCtx.beginPath();
+    eCtx.moveTo(pad.l + 4, y);
+    eCtx.lineTo(W - pad.r, y);
+    eCtx.stroke();
+
+    eCtx.fillStyle  = active ? col : col + '88';
+    eCtx.font       = active ? 'bold 10px Courier New' : '9px Courier New';
+    eCtx.textAlign  = 'left';
+    eCtx.fillText(`n=${n}`, pad.l + 7, y - 2);
+
+    eCtx.fillStyle  = active ? col + 'cc' : col + '44';
+    eCtx.font       = '8px Courier New';
+    eCtx.textAlign  = 'right';
+    eCtx.fillText(`${E.toFixed(2)}`, W - pad.r, y - 2);
+
+    if (active) {
+      eCtx.fillStyle = col;
+      eCtx.beginPath();
+      eCtx.arc(pad.l + 2, y, 3, 0, Math.PI * 2);
+      eCtx.fill();
+    }
+  }
+}
+
+eCvs.addEventListener('click', (e) => {
+  const rect = eCvs.getBoundingClientRect();
+  const ry   = (e.clientY - rect.top) * (eCvs.height / rect.height);
+  const E_min = -13.6, E_max = 0;
+  const pad   = { t: 18, b: 22 };
+  const cH    = eCvs.height - pad.t - pad.b;
+  const yFor  = E => pad.t + cH * (1 - (E - E_min) / (E_max - E_min));
+
+  let best = 1, bestD = Infinity;
+  for (let n = 1; n <= 6; n++) {
+    const d = Math.abs(ry - yFor(energyEV(n)));
+    if (d < bestD) { bestD = d; best = n; }
+  }
+  if (bestD < 22) {
+    const n = best;
+    const l = Math.min(state.l, n - 1);
+    const m = Math.max(-l, Math.min(l, state.m));
+    setState(n, l, m);
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 7.  SLIDERS  &  BUTTONS  &  KEYBOARD
+// ═══════════════════════════════════════════════════════════════
+
+document.getElementById('n-slider').addEventListener('input', e => {
+  const n = +e.target.value;
+  const l = Math.min(state.l, n - 1);
+  const m = Math.max(-l, Math.min(l, state.m));
+  setState(n, l, m);
+});
+
+document.getElementById('l-slider').addEventListener('input', e => {
+  const l = +e.target.value;
+  const m = Math.max(-l, Math.min(l, state.m));
+  setState(state.n, l, m);
+});
+
+document.getElementById('m-slider').addEventListener('input', e => {
+  setState(state.n, state.l, +e.target.value);
+});
+
+document.querySelectorAll('.qbtn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const [n, l, m] = btn.dataset.state.split(',').map(Number);
+    setState(n, l, m);
+  });
+});
+
+document.addEventListener('keydown', e => {
+  let { n, l, m } = state;
+  switch (e.code) {
+    case 'ArrowUp':    n = Math.min(6, n + 1); l = Math.min(l, n-1); m = Math.max(-l, Math.min(l, m)); break;
+    case 'ArrowDown':  n = Math.max(1, n - 1); l = Math.min(l, n-1); m = Math.max(-l, Math.min(l, m)); break;
+    case 'ArrowRight': if (e.shiftKey) m = Math.min(l, m+1); else l = Math.min(n-1, l+1); m = Math.max(-l, Math.min(l,m)); break;
+    case 'ArrowLeft':  if (e.shiftKey) m = Math.max(-l, m-1); else l = Math.max(0, l-1); m = Math.max(-l, Math.min(l,m)); break;
+    default: return;
+  }
+  e.preventDefault();
+  setState(n, l, m);
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 8.  ANIMATION LOOP
+// ═══════════════════════════════════════════════════════════════
+
+let lastTime = performance.now();
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  const now  = performance.now();
+  const dt   = Math.min((now - lastTime) / 1000, 0.1);
+  lastTime   = now;
+
+  // Cloud transition
+  if (transT < 1) {
+    transT = Math.min(1, transT + dt / TRANS_DUR);
+    const t = transT * transT * (3 - 2 * transT); // smoothstep
+
+    if (cloudOld) {
+      cloudOld.material.opacity = 0.8 * (1 - t);
+      if (transT >= 1) {
+        scene.remove(cloudOld);
+        cloudOld.geometry.dispose();
+        cloudOld.material.dispose();
+        cloudOld = null;
+      }
+    }
+    if (cloudNew) cloudNew.material.opacity = 0.8 * t;
+  }
+
+  // Camera distance lerp
+  const curDist = camera.position.length();
+  if (Math.abs(curDist - camTargetDist) > 0.1) {
+    const nd = curDist + (camTargetDist - curDist) * Math.min(1, dt * 2.5);
+    camera.position.setLength(nd);
+  }
+
+  // Gentle nucleus pulse
+  const pulse = 1 + 0.06 * Math.sin(now * 0.003);
+  nucleusMesh.scale.setScalar(pulse);
+  haloMesh.scale.setScalar(pulse * 1.1);
+
+  // Slow auto-rotation of the orbital cloud
+  if (cloudNew) cloudNew.rotation.y += dt * 0.18;
+  if (cloudOld) cloudOld.rotation.y += dt * 0.18;
+
+  orbitCtrl.update();
+  renderer.render(scene, camera);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 9.  RESIZE
+// ═══════════════════════════════════════════════════════════════
+
+const resizeObs = new ResizeObserver(() => {
+  const w = container.clientWidth, h = container.clientHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+  sizeEnergyCanvas();
+});
+resizeObs.observe(container);
+
+window.addEventListener('resize', sizeEnergyCanvas);
+
+// ═══════════════════════════════════════════════════════════════
+// 10. INIT
+// ═══════════════════════════════════════════════════════════════
+
+sizeEnergyCanvas();
+setState(1, 0, 0, true);
+animate();
+</script>
+</body>
+</html>
